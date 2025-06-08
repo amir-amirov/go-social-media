@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	app := newApplication(":8080")
+	app := newApplication(":3000")
 	mux := app.mount()
 
 	if err := app.run(mux); err != nil {

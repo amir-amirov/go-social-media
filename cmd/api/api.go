@@ -25,7 +25,7 @@ func newApplication(addr string) *application {
 	}
 }
 
-func (app *application) mount() *chi.Mux {
+func (app *application) mount() http.Handler {
 	// mux := http.NewServeMux()
 
 	// mux.HandleFunc("GET /v1/health", app.healthCheckHandler)
@@ -34,7 +34,15 @@ func (app *application) mount() *chi.Mux {
 
 	r := chi.NewRouter()
 
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	// Set a timeout value on the request context (ctx), that will signal
+	// through ctx.Done() that the request has timed out and further
+	// processing should be stopped.
+	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
@@ -43,7 +51,7 @@ func (app *application) mount() *chi.Mux {
 	return r
 }
 
-func (app *application) run(mux *chi.Mux) error {
+func (app *application) run(mux http.Handler) error {
 
 	srv := &http.Server{
 		Addr:         app.config.addr,
