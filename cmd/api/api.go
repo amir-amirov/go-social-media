@@ -17,11 +17,9 @@ type config struct {
 	addr string
 }
 
-func newApplication(addr string) *application {
+func newApplication(cfg config) *application {
 	return &application{
-		config: config{
-			addr: addr,
-		},
+		config: cfg,
 	}
 }
 
