@@ -5,27 +5,35 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type application struct {
 	config config
+	store  store.Storage
 }
 
 type config struct {
 	addr string
+	db   dbConfig
 }
 
-func newApplication(addr string) *application {
+type dbConfig struct {
+	addr         string
+	maxOpenConns int
+	maxIdleConns int
+}
+
+func newApplication(cfg config, store store.Storage) *application {
 	return &application{
-		config: config{
-			addr: addr,
-		},
+		config: cfg,
+		store:  store,
 	}
 }
 
-func (app *application) mount() *chi.Mux {
+func (app *application) mount() http.Handler {
 	// mux := http.NewServeMux()
 
 	// mux.HandleFunc("GET /v1/health", app.healthCheckHandler)
@@ -34,7 +42,15 @@ func (app *application) mount() *chi.Mux {
 
 	r := chi.NewRouter()
 
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	// Set a timeout value on the request context (ctx), that will signal
+	// through ctx.Done() that the request has timed out and further
+	// processing should be stopped.
+	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
@@ -43,7 +59,7 @@ func (app *application) mount() *chi.Mux {
 	return r
 }
 
-func (app *application) run(mux *chi.Mux) error {
+func (app *application) run(mux http.Handler) error {
 
 	srv := &http.Server{
 		Addr:         app.config.addr,
