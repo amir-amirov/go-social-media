@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"github.com/amir-amirov/go-social-media/internal/db"
 	"github.com/amir-amirov/go-social-media/internal/env"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/joho/godotenv"
@@ -14,8 +15,6 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	store := store.NewPostgresStorage(nil)
-
 	cfg := config{
 		addr: env.GetString("ADDR", ":8080"),
 		db: dbConfig{
@@ -24,6 +23,13 @@ func main() {
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
 		},
 	}
+
+	db, err := db.New(cfg.db.addr, cfg.db.maxOpenConns, cfg.db.maxIdleConns)
+	if err != nil {
+		log.Fatalf("[ERROR] Unable to connect to database..")
+	}
+
+	store := store.NewPostgresStorage(db)
 
 	app := newApplication(cfg, store)
 
