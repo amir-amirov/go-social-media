@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"log"
+)
 
 func New(addr string, maxOpenConns, maxIdleConns int) (*sql.DB, error) {
 	db, err := sql.Open("postgres", addr)
@@ -14,6 +17,8 @@ func New(addr string, maxOpenConns, maxIdleConns int) (*sql.DB, error) {
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
+
+	log.Println("Successfully connected to database..")
 
 	return db, nil
 }
