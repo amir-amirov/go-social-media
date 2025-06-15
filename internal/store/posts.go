@@ -17,13 +17,14 @@ type Post struct {
 	Tags      []string  `json:"tags"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Comments  []Comment `json:"comments"`
 }
 
-type PostsStore struct {
+type PostStore struct {
 	db *sql.DB
 }
 
-func (s *PostsStore) Create(ctx context.Context, post *Post) error {
+func (s *PostStore) Create(ctx context.Context, post *Post) error {
 
 	query := `
 		INSERT INTO posts (content, title, user_id, tags) 
@@ -46,7 +47,7 @@ func (s *PostsStore) Create(ctx context.Context, post *Post) error {
 	return nil
 }
 
-func (s *PostsStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
+func (s *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 	query := `
 		SELECT id, content, title, user_id, tags, created_at, updated_at
 		FROM posts
