@@ -77,9 +77,19 @@ func (s *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 	return &post, nil
 }
 
-func (s *PostStore) Update(ctx context.Context, postID int64) (*Post, error) {
+func (s *PostStore) Update(ctx context.Context, post *Post) error {
 
-	return nil, nil
+	query := `
+		UPDATE posts
+		SET title = $1, content = $2
+		WHERE id = $3
+	`
+
+	_, err := s.db.ExecContext(ctx, query, post.Title, post.Content, post.ID)
+	return err
+
+	// i dont care about rows affected because i expect that the row does exist
+	// as i added middleware to fetch post first
 }
 
 func (s *PostStore) Delete(ctx context.Context, postID int64) error {
@@ -89,19 +99,22 @@ func (s *PostStore) Delete(ctx context.Context, postID int64) error {
 		WHERE posts.id = $1
 	`
 
-	result, err := s.db.ExecContext(ctx, query, postID)
+	_, err := s.db.ExecContext(ctx, query, postID)
 	if err != nil {
 		return err
 	}
 
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
+	// i dont care about rows affected because i expect that the row does exist
+	// as i added middleware to fetch post first
 
-	if rows == 0 {
-		return ErrNotFound
-	}
+	// rows, err := result.RowsAffected()
+	// if err != nil {
+	// 	return err
+	// }
+
+	// if rows == 0 {
+	// 	return ErrNotFound
+	// }
 
 	return nil
 }
