@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -49,26 +50,10 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
-	idParam := chi.URLParam(r, "postID")
-	postID, err := strconv.ParseInt(idParam, 10, 64)
-	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid post id")
-		return
-	}
+	post := getPostFromCtx(r)
 	ctx := r.Context()
 
-	post, err := app.store.Posts.GetByID(ctx, postID)
-	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, err)
-		default:
-			app.internalServerError(w, r, err)
-		}
-		return
-	}
-
-	comments, err := app.store.Comments.GetByPostID(ctx, postID)
+	comments, err := app.store.Comments.GetByPostID(ctx, post.ID)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -81,4 +66,66 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
+
+	post := getPostFromCtx(r)
+	if err := writeJSON(w, http.StatusOK, post); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+}
+
+func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
+	post := getPostFromCtx(r)
+	ctx := r.Context()
+
+	if err := app.store.Posts.Delete(ctx, post.ID); err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	// program will reach end of the func and send response
+	// can do nothing, response will be sent as 200
+}
+
+func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "postID")
+		id, err := strconv.ParseInt(idParam, 10, 64)
+		if err != nil {
+			app.badRequestResponse(w, r, errors.New("invalid post id"))
+			return
+		}
+
+		ctx := r.Context()
+
+		post, err := app.store.Posts.GetByID(ctx, id)
+		if err != nil {
+			switch {
+			case errors.Is(err, store.ErrNotFound):
+				app.notFoundResponse(w, r, err)
+			default:
+				app.internalServerError(w, r, err)
+			}
+			return
+		}
+
+		ctx = context.WithValue(ctx, "post", post)
+		next.ServeHTTP(w, r.WithContext(ctx))
+
+	})
+}
+
+func getPostFromCtx(r *http.Request) *store.Post {
+	post := r.Context().Value("post").(*store.Post)
+	return post
 }
