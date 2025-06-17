@@ -22,8 +22,6 @@ func Seed(store store.Storage) {
 		}
 	}
 
-	fmt.Println(users[0])
-
 	posts := generatePosts(200, users)
 
 	for i := range posts {

@@ -83,3 +83,82 @@ func (s *CommentStore) Create(ctx context.Context, comment *Comment) error {
 
 	return nil
 }
+
+func (s *CommentStore) Update(ctx context.Context, comment *Comment) error {
+	query := `
+		UPDATE comments
+		SET content = $1
+		WHERE id = $2
+	`
+
+	result, err := s.db.ExecContext(ctx, query, comment.Content, comment.ID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows != 1 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *CommentStore) Delete(ctx context.Context, commentID int64) error {
+	query := `
+		DELETE FROM comments
+		WHERE id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
+
+	result, err := s.db.ExecContext(ctx, query, commentID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows != 1 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *CommentStore) GetByID(ctx context.Context, commentID int64) (*Comment, error) {
+	query := `
+		SELECT id, post_id, user_id, content, created_at
+		FROM comments
+		WHERE id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
+
+	var comment Comment
+
+	if err := s.db.QueryRowContext(
+		ctx,
+		query,
+		commentID,
+	).Scan(
+		&comment.ID,
+		&comment.PostID,
+		&comment.UserID,
+		&comment.Content,
+		&comment.CreatedAt,
+	); err != nil {
+		return nil, err
+	}
+
+	return &comment, nil
+}

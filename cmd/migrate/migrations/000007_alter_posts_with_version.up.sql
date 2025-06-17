@@ -1,2 +1,2 @@
 ALTER TABLE posts
-    DROP COLUMN IF EXISTS version;
+    ADD COLUMN version INT DEFAULT 0;
