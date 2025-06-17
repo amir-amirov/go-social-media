@@ -17,6 +17,7 @@ type Post struct {
 	Tags      []string  `json:"tags"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Version   int       `json:"version"`
 	Comments  []Comment `json:"comments"`
 }
 
@@ -31,6 +32,14 @@ func (s *PostStore) Create(ctx context.Context, post *Post) error {
 		VALUES($1,$2,$3,$4) 
 		RETURNING id, created_at, updated_at
 	`
+
+	// Though I added timeout to server config, and request alrdy has timeout
+	// in r.Context() for write time duration,
+	// here I'd like to make timeout shorter for DB
+	// I can't override timeout passed but i can create another shorter timeout,
+	// which will be fired first
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
 
 	err := s.db.QueryRowContext(
 		ctx,
@@ -49,12 +58,15 @@ func (s *PostStore) Create(ctx context.Context, post *Post) error {
 
 func (s *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 	query := `
-		SELECT id, content, title, user_id, tags, created_at, updated_at
+		SELECT id, content, title, user_id, tags, created_at, updated_at, version
 		FROM posts
 		WHERE id = $1
 	`
 
 	var post Post
+
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
 
 	err := s.db.QueryRowContext(ctx, query, postID).Scan(
 		&post.ID,
@@ -64,6 +76,7 @@ func (s *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 		pq.Array(&post.Tags),
 		&post.CreatedAt,
 		&post.UpdatedAt,
+		&post.Version,
 	)
 	if err != nil {
 		switch {
@@ -81,15 +94,26 @@ func (s *PostStore) Update(ctx context.Context, post *Post) error {
 
 	query := `
 		UPDATE posts
-		SET title = $1, content = $2
-		WHERE id = $3
+		SET title = $1, content = $2, version = version + 1
+		WHERE id = $3 AND version = $4
+		RETURNING version
 	`
 
-	_, err := s.db.ExecContext(ctx, query, post.Title, post.Content, post.ID)
-	return err
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
 
-	// i dont care about rows affected because i expect that the row does exist
-	// as i added middleware to fetch post first
+	err := s.db.QueryRowContext(ctx, query, post.Title, post.Content, post.ID, post.Version).Scan(&post.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrNotFound
+		default:
+			return err
+		}
+	}
+
+	return nil
+
 }
 
 func (s *PostStore) Delete(ctx context.Context, postID int64) error {
@@ -98,6 +122,9 @@ func (s *PostStore) Delete(ctx context.Context, postID int64) error {
 		DELETE FROM posts
 		WHERE posts.id = $1
 	`
+
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
 
 	_, err := s.db.ExecContext(ctx, query, postID)
 	if err != nil {
