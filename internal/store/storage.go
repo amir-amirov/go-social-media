@@ -31,12 +31,17 @@ type Storage struct {
 		Update(context.Context, *Comment) error
 		Delete(context.Context, int64) error
 	}
+	Followers interface {
+		Follow(context.Context, int64, int64) error
+		UnFollow(context.Context, int64, int64) error
+	}
 }
 
 func NewPostgresStorage(db *sql.DB) Storage {
 	return Storage{
-		Posts:    &PostStore{db},
-		Users:    &UserStore{db},
-		Comments: &CommentStore{db},
+		Posts:     &PostStore{db},
+		Users:     &UserStore{db},
+		Comments:  &CommentStore{db},
+		Followers: &FollowersStore{db},
 	}
 }

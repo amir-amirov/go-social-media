@@ -81,6 +81,18 @@ func (app *application) mount() http.Handler {
 			})
 		})
 
+		r.Route("/users", func(r chi.Router) {
+			r.Route("/{userID}", func(r chi.Router) {
+				r.Use(app.userContextMiddleware)
+
+				r.Get("/", app.getUserHandler)
+				// I made these endpoint as PUT to show clients that these are idempotent
+				// Meaning they will not create a resource if sent several times
+				r.Put("/follow", app.followUserHandler)
+				r.Put("/unfollow", app.unfollowUserHandler)
+			})
+		})
+
 	})
 
 	return r

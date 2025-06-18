@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS comments (
     id BIGSERIAL PRIMARY KEY,
-    post_id BIGSERIAL NOT NULL,
-    user_id BIGSERIAL NOT NULL,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
