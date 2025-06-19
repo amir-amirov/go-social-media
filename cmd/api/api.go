@@ -1,24 +1,29 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/amir-amirov/go-social-media/docs"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+	"go.uber.org/zap"
 )
 
 type application struct {
 	config config
 	store  store.Storage
+	logger *zap.SugaredLogger
 }
 
 type config struct {
-	addr string
-	db   dbConfig
-	env  string
+	addr   string
+	apiURL string
+	db     dbConfig
+	env    string
 }
 
 type dbConfig struct {
@@ -27,10 +32,11 @@ type dbConfig struct {
 	maxIdleConns int
 }
 
-func newApplication(cfg config, store store.Storage) *application {
+func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger) *application {
 	return &application{
 		config: cfg,
 		store:  store,
+		logger: logger,
 	}
 }
 
@@ -54,7 +60,10 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Get("/health", app.healthCheckHandler)
 
+	docURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+
 	r.Route("/v1", func(r chi.Router) {
+		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docURL)))
 
 		r.Route("/posts", func(r chi.Router) {
 			r.Post("/", app.createPostHandler)
@@ -105,6 +114,11 @@ func (app *application) mount() http.Handler {
 
 func (app *application) run(mux http.Handler) error {
 
+	// Docs
+	docs.SwaggerInfo.Version = version
+	docs.SwaggerInfo.Host = app.config.apiURL
+	docs.SwaggerInfo.BasePath = "/v1"
+
 	srv := &http.Server{
 		Addr:         app.config.addr,
 		Handler:      mux,
@@ -113,7 +127,7 @@ func (app *application) run(mux http.Handler) error {
 		IdleTimeout:  time.Minute,      // time it takes for tcp connection remains alive after sending response back to the client
 	}
 
-	log.Printf("Launching server on port%v", app.config.addr)
+	app.logger.Infof("Launching server on port%v", app.config.addr)
 
 	return srv.ListenAndServe()
 }

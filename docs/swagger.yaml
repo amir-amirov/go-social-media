@@ -1,0 +1,93 @@
+basePath: /api/v1
+definitions:
+  store.User:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API for Social Media written in Go
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Go Social Media API
+paths:
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Fetches user profile by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.User'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Fetches user profile
+      tags:
+      - Users
+  /users/{userID}/follow:
+    put:
+      consumes:
+      - application/json
+      description: Follow a user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User followed
+          schema:
+            type: string
+        "400":
+          description: Invalid user id
+          schema: {}
+        "404":
+          description: User not found
+          schema: {}
+        "500":
+          description: Internal server error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Follow a user
+      tags:
+      - Users
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

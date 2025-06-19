@@ -14,6 +14,20 @@ type userKeyType string
 
 const userKeyCtx userKeyType = "user"
 
+// GetUser godoc
+//
+//	@Summary		Fetches user profile
+//	@Description	Fetches user profile by ID
+//	@Tags			Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"User ID"
+//	@Success		200	{object}	store.User
+//	@Failure		400	{object}	error
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/{id} [get]
 func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	user := app.getUserFromCtx(r)
@@ -24,6 +38,20 @@ func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// FollowUser godoc
+//
+//	@Summary		Follow a user
+//	@Description	Follow a user by ID
+//	@Tags			Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			userID	path		int		true	"User ID"
+//	@Success		200		{string}	string	"User followed"
+//	@Failure		400		{object}	error	"Invalid user id"
+//	@Failure		404		{object}	error	"User not found"
+//	@Failure		500		{object}	error	"Internal server error"
+//	@Security		ApiKeyAuth
+//	@Router			/users/{userID}/follow [put]
 func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	followUser := app.getUserFromCtx(r)
