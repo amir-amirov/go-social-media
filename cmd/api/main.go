@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/amir-amirov/go-social-media/internal/db"
 	"github.com/amir-amirov/go-social-media/internal/env"
 	"github.com/amir-amirov/go-social-media/internal/store"
@@ -47,6 +49,9 @@ func main() {
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
 		},
 		env: env.GetString("ENV", "development"),
+		mail: mailConfig{
+			exp: time.Hour * 24 * 3, // 3 days to accept invitation
+		},
 	}
 
 	// Database
