@@ -24,12 +24,17 @@ type config struct {
 	apiURL string
 	db     dbConfig
 	env    string
+	mail   mailConfig
 }
 
 type dbConfig struct {
 	addr         string
 	maxOpenConns int
 	maxIdleConns int
+}
+
+type mailConfig struct {
+	exp time.Duration
 }
 
 func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger) *application {
@@ -91,6 +96,8 @@ func (app *application) mount() http.Handler {
 		})
 
 		r.Route("/users", func(r chi.Router) {
+			r.Put("/activate/{token}", app.activateUserHandler)
+
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.userContextMiddleware)
 
@@ -105,6 +112,12 @@ func (app *application) mount() http.Handler {
 				// r.Use(app.AuthTokenMiddleware)
 				r.Get("/feed", app.getUserFeedHandler)
 			})
+
+		})
+
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/user", app.registerUserHandler) // create user in "users" with is_active=false and token in "user_invitations"
+			// r.Post("/token", app.createTokenHandler) // update token of already created user with is_active=false
 		})
 
 	})
