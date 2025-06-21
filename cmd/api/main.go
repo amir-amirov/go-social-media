@@ -5,6 +5,7 @@ import (
 
 	"github.com/amir-amirov/go-social-media/internal/db"
 	"github.com/amir-amirov/go-social-media/internal/env"
+	"github.com/amir-amirov/go-social-media/internal/mailer"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -50,7 +51,14 @@ func main() {
 		},
 		env: env.GetString("ENV", "development"),
 		mail: mailConfig{
-			exp: time.Hour * 24 * 3, // 3 days to accept invitation
+			exp:       time.Hour * 24 * 3, // 3 days to accept invitation
+			fromEmail: env.GetString("FROM_EMAIL", ""),
+			sendgrid: sendGridConfig{
+				apiKey: env.GetString("SEND_GRID_API_KEY", ""),
+			},
+			mailtrap: mailTrapConfig{
+				apiKey: env.GetString("MAIL_TRAP_API_KEY", ""),
+			},
 		},
 	}
 
@@ -64,7 +72,13 @@ func main() {
 
 	store := store.NewPostgresStorage(db)
 
-	app := newApplication(cfg, store, logger)
+	// mailer := mailer.NewSendGrid(cfg.mail.fromEmail, cfg.mail.sendgrid.apiKey)
+	mailer, err := mailer.NewMailTrapClient(cfg.mail.mailtrap.apiKey, cfg.mail.fromEmail)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	app := newApplication(cfg, store, logger, mailer)
 
 	mux := app.mount()
 

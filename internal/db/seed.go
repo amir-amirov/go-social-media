@@ -20,6 +20,13 @@ func Seed(store store.Storage) {
 			log.Println("Error creating a user:", err)
 			return
 		}
+
+		users[i].IsActive = true
+
+		if err := store.Users.Update(ctx, nil, &users[i]); err != nil {
+			log.Println("Error creating a user:", err)
+			return
+		}
 	}
 
 	posts := generatePosts(200, users)

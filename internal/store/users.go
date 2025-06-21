@@ -204,14 +204,24 @@ func (s *UserStore) Update(ctx context.Context, tx *sql.Tx, user *User) error {
 		UPDATE users
 		SET username = $2,
 			email = $3,
-			is_active = true
+			is_active = $4
 		WHERE id = $1
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, queryDuration)
 	defer cancel()
 
-	result, err := tx.ExecContext(ctx, query, user.ID, user.Username, user.Email)
+	var (
+		result sql.Result
+		err    error
+	)
+
+	if tx == nil {
+		result, err = s.db.ExecContext(ctx, query, user.ID, user.Username, user.Email, user.IsActive)
+	} else {
+		result, err = tx.ExecContext(ctx, query, user.ID, user.Username, user.Email, user.IsActive)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -229,6 +239,9 @@ func (s *UserStore) deleteInvitation(ctx context.Context, tx *sql.Tx, userID int
 		DELETE FROM user_invitations
 		WHERE user_id = $1
 	`
+
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
 
 	_, err := tx.ExecContext(ctx, query, userID)
 	return err

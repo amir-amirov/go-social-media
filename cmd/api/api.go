@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/amir-amirov/go-social-media/docs"
+	"github.com/amir-amirov/go-social-media/internal/mailer"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -17,6 +19,7 @@ type application struct {
 	config config
 	store  store.Storage
 	logger *zap.SugaredLogger
+	mailer mailer.Client
 }
 
 type config struct {
@@ -34,14 +37,30 @@ type dbConfig struct {
 }
 
 type mailConfig struct {
-	exp time.Duration
+	exp       time.Duration
+	sendgrid  sendGridConfig
+	mailtrap  mailTrapConfig
+	fromEmail string
 }
 
-func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger) *application {
+type sendGridConfig struct {
+	apiKey string
+}
+
+type mailTrapConfig struct {
+	apiKey string
+}
+
+func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, mailer mailer.Client) *application {
+	log.Println("cfg:", cfg)
+	// log.Println("store:", store)
+	// log.Println("logger: ", logger)
+	log.Println("mailer: ", mailer)
 	return &application{
 		config: cfg,
 		store:  store,
 		logger: logger,
+		mailer: mailer,
 	}
 }
 
