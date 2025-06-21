@@ -2,9 +2,9 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
+	"github.com/amir-amirov/go-social-media/internal/mailer"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -35,7 +35,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	fmt.Println("payload:", payload)
+	// fmt.Println("payload:", payload)
 
 	if err := Validate.Struct(payload); err != nil {
 		app.badRequestResponse(w, r, err)
@@ -55,7 +55,6 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 
 	// token is a code which will be sent to user via email
 	token := uuid.New().String()
-	fmt.Println("token: ", token)
 
 	// store the user
 	if err := app.store.Users.CreateAndInvite(r.Context(), &user, token, app.config.mail.exp); err != nil {
@@ -71,6 +70,25 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// mail
+	isProdEnv := app.config.env == "production"
+	// activationURL := fmt.Sprintf("%s/confirm/%s", app.config.frontendURL,token)
+	vars := struct {
+		Username      string
+		ActivationURL string
+	}{
+		Username:      user.Username,
+		ActivationURL: token,
+	}
+
+	_, err := app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
+	if err != nil {
+		app.logger.Errorw("error sending welcome email", "error", err)
+
+		// rollback later user creation if email fails (SAGA pattern)
+
+		app.internalServerError(w, r, err)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 
