@@ -82,14 +82,18 @@ func (app *application) mount() http.Handler {
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.
 	r.Use(middleware.Timeout(60 * time.Second))
-	r.Get("/health", app.healthCheckHandler)
 
 	docURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
 
 	r.Route("/v1", func(r chi.Router) {
+
+		// r.With(app.BasicAuthMiddleware()).Get("/health", app.healthCheckHandler)
+		r.Get("/health", app.healthCheckHandler)
+
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docURL)))
 
 		r.Route("/posts", func(r chi.Router) {
+			r.Use(app.AuthTokenMiddleware())
 			r.Post("/", app.createPostHandler)
 
 			r.Route("/{postID}", func(r chi.Router) {
@@ -118,7 +122,8 @@ func (app *application) mount() http.Handler {
 			r.Put("/activate/{token}", app.activateUserHandler)
 
 			r.Route("/{userID}", func(r chi.Router) {
-				r.Use(app.userContextMiddleware)
+				r.Use(app.AuthTokenMiddleware())
+				//FIX: // r.Use(app.userContextMiddleware)
 
 				r.Get("/", app.getUserHandler)
 				// I made these endpoint as PUT to show clients that these are idempotent
@@ -128,7 +133,7 @@ func (app *application) mount() http.Handler {
 			})
 
 			r.Group(func(r chi.Router) {
-				// r.Use(app.AuthTokenMiddleware)
+				r.Use(app.AuthTokenMiddleware())
 				r.Get("/feed", app.getUserFeedHandler)
 			})
 
@@ -154,7 +159,7 @@ func (app *application) run(mux http.Handler) error {
 	srv := &http.Server{
 		Addr:         app.config.addr,
 		Handler:      mux,
-		WriteTimeout: time.Second * 30, // time it takes for server to send response back to client
+		WriteTimeout: time.Second * 60, // time it takes for server to send response back to client
 		ReadTimeout:  time.Second * 10, // time it takes for server from receiving the first packet to the last packet after tcp connection is formed
 		IdleTimeout:  time.Minute,      // time it takes for tcp connection remains alive after sending response back to the client
 	}
