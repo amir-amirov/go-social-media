@@ -93,7 +93,7 @@ func (app *application) mount() http.Handler {
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docURL)))
 
 		r.Route("/posts", func(r chi.Router) {
-			r.Use(app.AuthTokenMiddleware())
+			// r.Use(app.AuthTokenMiddleware())
 			r.Post("/", app.createPostHandler)
 
 			r.Route("/{postID}", func(r chi.Router) {
@@ -111,8 +111,8 @@ func (app *application) mount() http.Handler {
 						r.Use(app.commentsContextMiddleware)
 
 						r.Get("/", app.getCommentsHandler)
-						r.Patch("/", app.updateCommentHandler)
-						r.Delete("/", app.deleteCommentHandler)
+						r.Patch("/", app.checkPostOwnership("moderator", app.updateCommentHandler))
+						r.Delete("/", app.checkPostOwnership("admin", app.deleteCommentHandler))
 					})
 				})
 			})
@@ -122,7 +122,7 @@ func (app *application) mount() http.Handler {
 			r.Put("/activate/{token}", app.activateUserHandler)
 
 			r.Route("/{userID}", func(r chi.Router) {
-				r.Use(app.AuthTokenMiddleware())
+				// r.Use(app.AuthTokenMiddleware())
 				//FIX: // r.Use(app.userContextMiddleware)
 
 				r.Get("/", app.getUserHandler)
@@ -133,7 +133,7 @@ func (app *application) mount() http.Handler {
 			})
 
 			r.Group(func(r chi.Router) {
-				r.Use(app.AuthTokenMiddleware())
+				// r.Use(app.AuthTokenMiddleware())
 				r.Get("/feed", app.getUserFeedHandler)
 			})
 
