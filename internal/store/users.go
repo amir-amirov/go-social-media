@@ -22,6 +22,7 @@ type User struct {
 	Password  password  `json:"-"`
 	CreatedAt time.Time `json:"-"`
 	IsActive  bool      `json:"is_active"`
+	RoleID    int64     `json:"role_id"`
 }
 
 type password struct {
@@ -48,7 +49,7 @@ type UserStore struct {
 func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
 
 	query := `
-		INSERT INTO users(username, password, email) VALUES($1, $2, $3) RETURNING id, created_at
+		INSERT INTO users(username, password, email, role_id) VALUES($1, $2, $3, $4) RETURNING id, created_at
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, queryDuration)
@@ -57,9 +58,9 @@ func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
 	// Sometimes I need this method to be a part of transaction so tx is introduced as optional parameter
 	var err error
 	if tx == nil {
-		err = s.db.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email).Scan(&user.ID, &user.CreatedAt)
+		err = s.db.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email, &user.RoleID).Scan(&user.ID, &user.CreatedAt)
 	} else {
-		err = tx.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email).Scan(&user.ID, &user.CreatedAt)
+		err = tx.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email, &user.RoleID).Scan(&user.ID, &user.CreatedAt)
 	}
 
 	var pqErr *pq.Error
