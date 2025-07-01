@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("not found")
+	ErrNotFound  = errors.New("not found")
+	ErrForbidden = errors.New("forbidden")
 
 	queryDuration = time.Second * 5
 )
@@ -37,8 +38,8 @@ type Storage struct {
 		Delete(context.Context, int64) error
 	}
 	Followers interface {
-		Follow(context.Context, int64, int64) error
-		UnFollow(context.Context, int64, int64) error
+		Follow(ctx context.Context, user int64, follower int64) error
+		UnFollow(ctx context.Context, user int64, follower int64) error
 	}
 	Roles interface {
 		GetByName(context.Context, string) (*Role, error)

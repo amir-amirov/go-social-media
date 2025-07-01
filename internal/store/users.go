@@ -53,7 +53,14 @@ type UserStore struct {
 func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
 
 	query := `
-		INSERT INTO users(username, password, email, role_id) VALUES($1, $2, $3, $4) RETURNING id, created_at
+		INSERT INTO users(
+			username, 
+			password, 
+			email, 
+			role_id
+		) 
+		VALUES($1, $2, $3, (SELECT id FROM roles WHERE name = 'user')) 
+		RETURNING id, created_at;
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, queryDuration)
@@ -62,9 +69,9 @@ func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
 	// Sometimes I need this method to be a part of transaction so tx is introduced as optional parameter
 	var err error
 	if tx == nil {
-		err = s.db.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email, &user.RoleID).Scan(&user.ID, &user.CreatedAt)
+		err = s.db.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email).Scan(&user.ID, &user.CreatedAt)
 	} else {
-		err = tx.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email, &user.RoleID).Scan(&user.ID, &user.CreatedAt)
+		err = tx.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email).Scan(&user.ID, &user.CreatedAt)
 	}
 
 	var pqErr *pq.Error
@@ -101,7 +108,7 @@ func (s *UserStore) CreateAndInvite(ctx context.Context, user *User, token strin
 func (s *UserStore) GetByID(ctx context.Context, userID int64) (*User, error) {
 
 	query := `
-		SELECT id, username, email, password, created_at
+		SELECT id, username, email, password, created_at, role_id
 		FROM users
 		WHERE id = $1
 	`
@@ -118,6 +125,7 @@ func (s *UserStore) GetByID(ctx context.Context, userID int64) (*User, error) {
 		&user.Email,
 		&user.Password.hash,
 		&user.CreatedAt,
+		&user.RoleID,
 	); err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):

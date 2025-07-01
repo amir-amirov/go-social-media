@@ -101,7 +101,7 @@ func (app *application) mount() http.Handler {
 
 				r.Get("/", app.getPostHandler)
 				r.Patch("/", app.checkPostOwnership("moderator", app.updatePostHandler))
-				r.Delete("/", app.checkPostOwnership("moderator", app.deletePostHandler))
+				r.Delete("/", app.checkPostOwnership("admin", app.deletePostHandler))
 
 				r.Route("/comments", func(r chi.Router) {
 
@@ -123,8 +123,7 @@ func (app *application) mount() http.Handler {
 			r.Put("/activate/{token}", app.activateUserHandler)
 
 			r.Route("/{userID}", func(r chi.Router) {
-				// r.Use(app.AuthTokenMiddleware())
-				//FIX: // r.Use(app.userContextMiddleware)
+				r.Use(app.AuthTokenMiddleware)
 
 				r.Get("/", app.getUserHandler)
 				// I made these endpoint as PUT to show clients that these are idempotent
@@ -134,7 +133,7 @@ func (app *application) mount() http.Handler {
 			})
 
 			r.Group(func(r chi.Router) {
-				// r.Use(app.AuthTokenMiddleware())
+				r.Use(app.AuthTokenMiddleware)
 				r.Get("/feed", app.getUserFeedHandler)
 			})
 
