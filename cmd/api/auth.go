@@ -6,6 +6,7 @@ import (
 
 	"github.com/amir-amirov/go-social-media/internal/mailer"
 	"github.com/amir-amirov/go-social-media/internal/store"
+	"github.com/amir-amirov/go-social-media/internal/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -14,6 +15,16 @@ type RegisterUserPayload struct {
 	Username string `json:"username" validate:"required,max=100"`
 	Email    string `json:"email" validate:"required,email,max=255"`
 	Password string `json:"password" validate:"required,max=72"`
+}
+
+type LoginUserPayload struct {
+	Email    string `json:"email" validate:"required,email,max=255"`
+	Password string `json:"password" validate:"required,max=72"`
+}
+
+type UserWithToken struct {
+	User  *store.User `json:"user"`
+	Token string      `json:"token"`
 }
 
 // registerUserHandler godoc
@@ -109,4 +120,49 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request) {
+	var payload LoginUserPayload
+
+	if err := readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	user, err := app.store.Users.GetByEmail(r.Context(), payload.Email)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.badRequestResponse(w, r, errors.New("invalid email"))
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	if err := user.Password.Compare(payload.Password); err != nil {
+		app.badRequestResponse(w, r, errors.New("invalid password"))
+		return
+	}
+
+	token, err := utils.GenerateToken(user.Email, user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, UserWithToken{
+		User:  user,
+		Token: token,
+	}); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 }

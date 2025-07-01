@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -32,17 +33,20 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	fmt.Printf("payload: %+v\n", payload)
+
 	if err := Validate.Struct(payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
+	user := app.getUserFromCtx(r)
+
 	post := &store.Post{
 		Title:   payload.Title,
 		Content: payload.Content,
 		Tags:    payload.Tags,
-		// TODO: Change after auth
-		UserID: 1,
+		UserID:  user.ID,
 	}
 
 	ctx := r.Context()
@@ -59,7 +63,7 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
-	post := getPostFromCtx(r)
+	post := app.getPostFromCtx(r)
 	ctx := r.Context()
 
 	comments, err := app.store.Comments.GetByPostID(ctx, post.ID)
@@ -79,7 +83,7 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
 
-	post := getPostFromCtx(r)
+	post := app.getPostFromCtx(r)
 
 	var payload UpdatePostPayload
 
@@ -89,7 +93,7 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
+		app.badRequestResponse(w, r, errors.New("invalid payload"))
 		return
 	}
 
@@ -114,7 +118,7 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
-	post := getPostFromCtx(r)
+	post := app.getPostFromCtx(r)
 	ctx := r.Context()
 
 	if err := app.store.Posts.Delete(ctx, post.ID); err != nil {
@@ -160,7 +164,7 @@ func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func getPostFromCtx(r *http.Request) *store.Post {
+func (app *application) getPostFromCtx(r *http.Request) *store.Post {
 	post := r.Context().Value(postKeyCtx).(*store.Post)
 	return post
 }
