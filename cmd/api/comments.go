@@ -30,15 +30,15 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	post := getPostFromCtx(r)
+	post := app.getPostFromCtx(r)
 	ctx := r.Context()
 
-	var userID int64 = 65
+	user := app.getUserFromCtx(r)
 
 	comment := &store.Comment{
 		Content: payload.Content,
 		PostID:  post.ID,
-		UserID:  userID,
+		UserID:  user.ID,
 	}
 
 	if err := app.store.Comments.Create(ctx, comment); err != nil {

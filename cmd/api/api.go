@@ -93,15 +93,15 @@ func (app *application) mount() http.Handler {
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docURL)))
 
 		r.Route("/posts", func(r chi.Router) {
-			// r.Use(app.AuthTokenMiddleware())
+			r.Use(app.AuthTokenMiddleware)
 			r.Post("/", app.createPostHandler)
 
 			r.Route("/{postID}", func(r chi.Router) {
 				r.Use(app.postsContextMiddleware)
 
 				r.Get("/", app.getPostHandler)
-				r.Patch("/", app.updatePostHandler)
-				r.Delete("/", app.deletePostHandler)
+				r.Patch("/", app.checkPostOwnership("moderator", app.updatePostHandler))
+				r.Delete("/", app.checkPostOwnership("moderator", app.deletePostHandler))
 
 				r.Route("/comments", func(r chi.Router) {
 
@@ -111,6 +111,7 @@ func (app *application) mount() http.Handler {
 						r.Use(app.commentsContextMiddleware)
 
 						r.Get("/", app.getCommentsHandler)
+						// TODO checkCOMMENT ownership
 						r.Patch("/", app.checkPostOwnership("moderator", app.updateCommentHandler))
 						r.Delete("/", app.checkPostOwnership("admin", app.deleteCommentHandler))
 					})
@@ -142,6 +143,7 @@ func (app *application) mount() http.Handler {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/user", app.registerUserHandler) // create user in "users" with is_active=false and token in "user_invitations"
 			// r.Post("/token", app.createTokenHandler) // update token of already created user with is_active=false
+			r.Post("/login", app.loginUserHandler)
 		})
 
 	})
