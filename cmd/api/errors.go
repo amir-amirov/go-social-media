@@ -10,22 +10,22 @@ func (app *application) internalServerError(w http.ResponseWriter, r *http.Reque
 }
 
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.logger.Infow("bad request error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
-	writeJSONError(w, http.StatusBadRequest, "invalid body of the request")
+	app.logger.Warnf("bad request error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
+	writeJSONError(w, http.StatusBadRequest, err.Error())
 }
 
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.logger.Infow("not found error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
-	writeJSONError(w, http.StatusNotFound, err.Error())
+	app.logger.Warnf("not found error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
+	writeJSONError(w, http.StatusNotFound, "not found error")
 }
 
 func (app *application) forbiddenResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.logger.Infow("forbidden error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
+	app.logger.Warnf("forbidden error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
 	writeJSONError(w, http.StatusForbidden, err.Error())
 }
 
 func (app *application) unAuthorizedErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.logger.Infow("unauthorized error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
+	app.logger.Warnf("unauthorized error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
 	writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 }
 

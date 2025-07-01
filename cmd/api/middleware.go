@@ -12,6 +12,7 @@ import (
 
 func (app *application) checkPostOwnership(requiredRole string, next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		user := app.getUserFromCtx(r)
 		post := app.getPostFromCtx(r)
 
@@ -34,7 +35,7 @@ func (app *application) checkPostOwnership(requiredRole string, next http.Handle
 		}
 
 		if !allowed {
-			app.forbiddenResponse(w, r, err)
+			app.forbiddenResponse(w, r, store.ErrForbidden)
 			return
 		}
 
@@ -53,7 +54,7 @@ func (app *application) checkRolePrecedence(ctx context.Context, user *store.Use
 		return false, err
 	}
 
-	return role.Level >= userRole.Level, nil
+	return role.Level <= userRole.Level, nil
 }
 
 func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
