@@ -7,6 +7,8 @@ import (
 	"github.com/amir-amirov/go-social-media/internal/env"
 	"github.com/amir-amirov/go-social-media/internal/mailer"
 	"github.com/amir-amirov/go-social-media/internal/store"
+	"github.com/amir-amirov/go-social-media/internal/store/cache"
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -60,6 +62,12 @@ func main() {
 				apiKey: env.GetString("MAIL_TRAP_API_KEY", ""),
 			},
 		},
+		redis: redisConfig{
+			addr:     env.GetString("REDIS_ADDR", "localhost:6379"),
+			password: env.GetString("REDIS_PASSWORD", ""),
+			db:       env.GetInt("REDIS_DB", 0),
+			enabled:  env.GetBool("REDIS_ENABLED", false),
+		},
 	}
 
 	// Database
@@ -70,6 +78,15 @@ func main() {
 
 	defer db.Close()
 
+	// Cache
+	var cach *redis.Client
+	if cfg.redis.enabled {
+		cach = cache.NewRedisClient(cfg.redis.addr, cfg.redis.password, cfg.redis.db)
+		logger.Info("redis cache connection pool established")
+	}
+
+	cacheStore := cache.NewRedisStorage(cach)
+
 	store := store.NewPostgresStorage(db)
 
 	// mailer := mailer.NewSendGrid(cfg.mail.fromEmail, cfg.mail.sendgrid.apiKey)
@@ -78,7 +95,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	app := newApplication(cfg, store, logger, mailer)
+	app := newApplication(cfg, store, logger, mailer, cacheStore)
 
 	mux := app.mount()
 
