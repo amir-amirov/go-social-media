@@ -9,6 +9,7 @@ import (
 	"github.com/amir-amirov/go-social-media/docs"
 	"github.com/amir-amirov/go-social-media/internal/mailer"
 	"github.com/amir-amirov/go-social-media/internal/store"
+	"github.com/amir-amirov/go-social-media/internal/store/cache"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -16,10 +17,11 @@ import (
 )
 
 type application struct {
-	config config
-	store  store.Storage
-	logger *zap.SugaredLogger
-	mailer mailer.Client
+	config     config
+	store      store.Storage
+	logger     *zap.SugaredLogger
+	mailer     mailer.Client
+	cacheStore cache.Storage
 }
 
 type config struct {
@@ -28,6 +30,7 @@ type config struct {
 	db     dbConfig
 	env    string
 	mail   mailConfig
+	redis  redisConfig
 }
 
 type dbConfig struct {
@@ -51,16 +54,24 @@ type mailTrapConfig struct {
 	apiKey string
 }
 
-func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, mailer mailer.Client) *application {
+type redisConfig struct {
+	addr     string
+	password string
+	db       int
+	enabled  bool
+}
+
+func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, mailer mailer.Client, cacheStore cache.Storage) *application {
 	log.Println("cfg:", cfg)
 	// log.Println("store:", store)
 	// log.Println("logger: ", logger)
 	log.Println("mailer: ", mailer)
 	return &application{
-		config: cfg,
-		store:  store,
-		logger: logger,
-		mailer: mailer,
+		config:     cfg,
+		store:      store,
+		logger:     logger,
+		mailer:     mailer,
+		cacheStore: cacheStore,
 	}
 }
 

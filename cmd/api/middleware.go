@@ -74,7 +74,7 @@ func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 		}
 
 		// fetch user
-		user, err := app.store.Users.GetByID(r.Context(), user_id)
+		user, err := app.getUser(r.Context(), user_id)
 		if err != nil {
 			app.unAuthorizedErrorResponse(w, r, err)
 			return
@@ -100,3 +100,36 @@ func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 // 		}
 // 	}
 // }
+
+func (app *application) getUser(ctx context.Context, userID int64) (*store.User, error) {
+
+	var err error
+
+	if !app.config.redis.enabled {
+		return app.store.Users.GetByID(ctx, userID)
+	}
+
+	user, _ := app.cacheStore.Users.Get(ctx, userID)
+	// if err != nil {
+	// 	app.logger.Errorf("error getting user from cache", "error", err.Error())
+	// 	return nil, err
+	// }
+
+	if user == nil {
+
+		user, err = app.store.Users.GetByID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		if err = app.cacheStore.Users.Set(ctx, user); err != nil {
+			return nil, err
+		}
+
+	} else {
+		app.logger.Info("Found cached user!")
+	}
+
+	return user, nil
+
+}
