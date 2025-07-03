@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/amir-amirov/go-social-media/docs"
@@ -181,7 +186,35 @@ func (app *application) run(mux http.Handler) error {
 		IdleTimeout:  time.Minute,      // time it takes for tcp connection remains alive after sending response back to the client
 	}
 
+	shutdown := make(chan error)
+
+	go func() {
+		quit := make(chan os.Signal, 1)
+
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		s := <-quit
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		app.logger.Infow("signal caught", "signal", s.String())
+
+		shutdown <- srv.Shutdown(ctx)
+	}()
+
 	app.logger.Infof("Launching server on port%v", app.config.addr)
 
-	return srv.ListenAndServe()
+	err := srv.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	err = <-shutdown
+	if err != nil {
+		return err
+	}
+
+	app.logger.Infow("server has stopped", "addr", app.config.addr, "env", app.config.env)
+
+	return nil
 }
