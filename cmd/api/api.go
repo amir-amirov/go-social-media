@@ -12,6 +12,7 @@ import (
 	"github.com/amir-amirov/go-social-media/internal/store/cache"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"go.uber.org/zap"
 )
@@ -95,6 +96,10 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	docURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+
+	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		promhttp.Handler().ServeHTTP(w, r)
+	})
 
 	r.Route("/v1", func(r chi.Router) {
 

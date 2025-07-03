@@ -1,3 +1,37 @@
+# services:
+#   db:
+#     image: postgres
+#     environment:
+#       POSTGRES_DB: social
+#       POSTGRES_USER: user
+#       POSTGRES_PASSWORD: password
+#     volumes:
+#       - db_data:/var/lib/postgresql/db_data
+#     ports:
+#       - "5431:5432"
+
+#   redis:
+#     image: redis:6.2-alpine
+#     restart: unless-stopped
+#     container_name: redis
+#     ports:
+#       - "6379:6379"
+#     command: redis-server --save 60 1 --loglevel warning
+
+#   redis-commander:
+#     container_name: redis-commander
+#     hostname: redis-commander
+#     image: rediscommander/redis-commander:latest
+#     environment:
+#       - REDIS_HOST=redis
+#     ports:
+#       - "127.0.0.1:8081:8081"
+#     depends_on:
+#       - redis
+#     restart: unless-stopped
+# volumes:
+#   db_data:
+
 services:
   db:
     image: postgres
@@ -6,7 +40,7 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     volumes:
-      - db_data:/var/lib/postgresql/db_data
+      - db_data:/var/lib/postgresql/data
     ports:
       - "5431:5432"
 
@@ -29,5 +63,37 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+
+  myapp:
+    build: .
+    environment:
+      - ADDR=${ADDR}
+      - DB_ADDR=${DB_ADDR}
+      - MAIL_TRAP_API_KEY=${MAIL_TRAP_API_KEY}
+      - FROM_EMAIL=${FROM_EMAIL}
+      - REDIS_ADDR=${REDIS_ADDR}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - REDIS_ENABLED=${REDIS_ENABLED}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
 volumes:
   db_data:

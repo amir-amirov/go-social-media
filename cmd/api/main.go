@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/amir-amirov/go-social-media/internal/db"
@@ -47,7 +48,7 @@ func main() {
 		addr:   env.GetString("ADDR", ":8080"),
 		apiURL: env.GetString("EXTERNAL_URL", "localhost:8080"),
 		db: dbConfig{
-			addr:         env.GetString("DB_ADDR", "postgres://user:password@localhost:5431/social?sslmode=disable"),
+			addr:         env.GetString("DB_ADDR", "postgres://user:password@localhost:5432/social?sslmode=disable"),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
 		},
@@ -73,6 +74,7 @@ func main() {
 	// Database
 	db, err := db.New(cfg.db.addr, cfg.db.maxOpenConns, cfg.db.maxIdleConns)
 	if err != nil {
+		fmt.Printf("cfg.db.addr: %v", cfg.db.addr)
 		logger.Fatal("Unable to connect to database..")
 	}
 
