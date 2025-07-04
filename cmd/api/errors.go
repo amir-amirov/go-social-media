@@ -29,10 +29,10 @@ func (app *application) unAuthorizedErrorResponse(w http.ResponseWriter, r *http
 	writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 }
 
-// func (app *application) unAuthorizedBasicErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-// 	app.logger.Infow("unauthorized basic error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
+func (app *application) unAuthorizedBasicErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	app.logger.Infow("unauthorized basic error", "method", r.Method, "path", r.URL.Path, "error", err.Error())
 
-// 	w.Header().Set("WWW-Authenticate", `Basic realm="restricted", chatset="UTF-8"`)
+	w.Header().Set("WWW-Authenticate", `Basic realm="restricted", chatset="UTF-8"`)
 
-// 	writeJSONError(w, http.StatusUnauthorized, "unauthorized")
-// }
+	writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+}
