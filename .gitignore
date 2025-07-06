@@ -3,52 +3,33 @@ tmp
 .envrc
 bin/
 
+web/.env
 # Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+web/logs
+web/*.log
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
+web/pnpm-debug.log*
+web/lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Dependencies
+web/node_modules
+
+# Build output
+web/dist
+web/dist-ssr
+
+# Local environment files
+web/*.local
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+web/.vscode/*
+!web/.vscode/extensions.json
+web/.idea
+web/.DS_Store
+web/*.suo
+web/*.ntvs*
+web/*.njsproj
+web/*.sln
+web/*.sw?

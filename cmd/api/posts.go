@@ -22,8 +22,9 @@ type CreatePostPayload struct {
 }
 
 type UpdatePostPayload struct {
-	Title   *string `json:"title" validate:"omitempty,max=200"`
-	Content *string `json:"content" validate:"omitempty,max=1000"`
+	Title   *string   `json:"title" validate:"omitempty,max=200"`
+	Content *string   `json:"content" validate:"omitempty,max=1000"`
+	Tags    *[]string `json:"tags,omitempty"    validate:"omitempty,max=20,dive,required,max=50"`
 }
 
 func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +104,10 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 
 	if payload.Title != nil {
 		post.Title = *payload.Title
+	}
+
+	if payload.Tags != nil {
+		post.Tags = *payload.Tags
 	}
 
 	if err := app.store.Posts.Update(r.Context(), post); err != nil {

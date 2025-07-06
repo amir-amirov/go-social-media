@@ -5,7 +5,7 @@ import "embed"
 const (
 	FromName            = "GopherSocial"
 	maxRetires          = 3
-	UserWelcomeTemplate = "user_invitation.tmpl"
+	UserWelcomeTemplate = "user_invitation_code.tmpl"
 )
 
 //go:embed "templates"

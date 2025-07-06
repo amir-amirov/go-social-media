@@ -1,0 +1,66 @@
+{{define "subject"}}Finish Registration with GopherSocial{{end}}
+
+{{define "body"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GopherSocial Email Verification</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        color: #333;
+        background-color: #f9f9f9;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+      .code {
+        font-size: 24px;
+        letter-spacing: 4px;
+        font-weight: bold;
+        color: #1a73e8;
+        background-color: #eef3fc;
+        padding: 12px 20px;
+        display: inline-block;
+        border-radius: 6px;
+        margin: 20px 0;
+      }
+      .footer {
+        font-size: 13px;
+        color: #888;
+        margin-top: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <p>Hi {{.Username}},</p>
+
+      <p>Thanks for signing up for <strong>GopherSocial</strong>! We're excited to have you join us.</p>
+
+      <p>To complete your registration, please enter the following verification code in the app:</p>
+
+      <p class="code">{{.Code}}</p>
+
+      <p>This code is valid for the next 10 minutes.</p>
+
+      <p>If you didn't request this, you can safely ignore this email.</p>
+
+      <p>Thanks,<br>The GopherSocial Team</p>
+
+      <div class="footer">
+        Please don’t reply to this email. If you need help, contact our support team.
+      </div>
+    </div>
+  </body>
+</html>
+{{end}}

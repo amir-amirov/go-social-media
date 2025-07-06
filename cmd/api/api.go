@@ -1,37 +1,47 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/amir-amirov/go-social-media/docs"
+	"github.com/amir-amirov/go-social-media/internal/env"
 	"github.com/amir-amirov/go-social-media/internal/mailer"
+	"github.com/amir-amirov/go-social-media/internal/ratelimiter"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/amir-amirov/go-social-media/internal/store/cache"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"go.uber.org/zap"
 )
 
 type application struct {
-	config     config
-	store      store.Storage
-	logger     *zap.SugaredLogger
-	mailer     mailer.Client
-	cacheStore cache.Storage
+	config      config
+	store       store.Storage
+	logger      *zap.SugaredLogger
+	mailer      mailer.Client
+	cacheStore  cache.Storage
+	rateLimiter ratelimiter.Limiter
 }
 
 type config struct {
-	addr   string
-	apiURL string
-	db     dbConfig
-	env    string
-	mail   mailConfig
-	redis  redisConfig
+	addr        string
+	apiURL      string
+	db          dbConfig
+	env         string
+	mail        mailConfig
+	redis       redisConfig
+	rateLimiter ratelimiter.Config
 }
 
 type dbConfig struct {
@@ -62,17 +72,18 @@ type redisConfig struct {
 	enabled  bool
 }
 
-func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, mailer mailer.Client, cacheStore cache.Storage) *application {
+func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, mailer mailer.Client, cacheStore cache.Storage, rateLimiter ratelimiter.Limiter) *application {
 	log.Println("cfg:", cfg)
 	// log.Println("store:", store)
 	// log.Println("logger: ", logger)
 	log.Println("mailer: ", mailer)
 	return &application{
-		config:     cfg,
-		store:      store,
-		logger:     logger,
-		mailer:     mailer,
-		cacheStore: cacheStore,
+		config:      cfg,
+		store:       store,
+		logger:      logger,
+		mailer:      mailer,
+		cacheStore:  cacheStore,
+		rateLimiter: rateLimiter,
 	}
 }
 
@@ -89,6 +100,18 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{env.GetString("CORS_ALLOWED_ORIGIN", "http://localhost:5173")},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
+
+	if app.config.rateLimiter.Enabled {
+		r.Use(app.RateLimiterMiddleware)
+	}
 
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
@@ -111,6 +134,10 @@ func (app *application) mount() http.Handler {
 		r.Route("/posts", func(r chi.Router) {
 			r.Use(app.AuthTokenMiddleware)
 			r.Post("/", app.createPostHandler)
+
+			r.Route("/users", func(r chi.Router) {
+				r.Get("/{userID}", app.getUserPostsHandler)
+			})
 
 			r.Route("/{postID}", func(r chi.Router) {
 				r.Use(app.postsContextMiddleware)
@@ -146,11 +173,13 @@ func (app *application) mount() http.Handler {
 				// Meaning they will not create a resource if sent several times
 				r.Put("/follow", app.followUserHandler)
 				r.Put("/unfollow", app.unfollowUserHandler)
+				r.Get("/follow-stats", app.getFollowStatsHandler)
 			})
 
 			r.Group(func(r chi.Router) {
 				r.Use(app.AuthTokenMiddleware)
 				r.Get("/feed", app.getUserFeedHandler)
+				r.Get("/top", app.getTopUsersHandler)
 			})
 
 		})
@@ -181,7 +210,35 @@ func (app *application) run(mux http.Handler) error {
 		IdleTimeout:  time.Minute,      // time it takes for tcp connection remains alive after sending response back to the client
 	}
 
+	shutdown := make(chan error)
+
+	go func() {
+		quit := make(chan os.Signal, 1)
+
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		s := <-quit
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		app.logger.Infow("signal caught", "signal", s.String())
+
+		shutdown <- srv.Shutdown(ctx)
+	}()
+
 	app.logger.Infof("Launching server on port%v", app.config.addr)
 
-	return srv.ListenAndServe()
+	err := srv.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	err = <-shutdown
+	if err != nil {
+		return err
+	}
+
+	app.logger.Infow("server has stopped", "addr", app.config.addr, "env", app.config.env)
+
+	return nil
 }

@@ -101,7 +101,41 @@ func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 }
 
+func (app *application) getFollowStatsHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.getUserFromCtx(r)
+
+	ctx := r.Context()
+
+	stats, err := app.store.Followers.Stats(ctx, user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, stats); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+}
+
 func (app *application) getUserFromCtx(r *http.Request) *store.User {
 	user := r.Context().Value(userKeyCtx).(*store.User)
 	return user
+}
+
+func (app *application) getTopUsersHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.getUserFromCtx(r)
+
+	ctx := r.Context()
+
+	users, err := app.store.Users.Top(ctx, user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, users); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
 }

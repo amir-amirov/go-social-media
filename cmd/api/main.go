@@ -7,6 +7,7 @@ import (
 	"github.com/amir-amirov/go-social-media/internal/db"
 	"github.com/amir-amirov/go-social-media/internal/env"
 	"github.com/amir-amirov/go-social-media/internal/mailer"
+	"github.com/amir-amirov/go-social-media/internal/ratelimiter"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/amir-amirov/go-social-media/internal/store/cache"
 	"github.com/go-redis/redis/v8"
@@ -54,7 +55,7 @@ func main() {
 		},
 		env: env.GetString("ENV", "development"),
 		mail: mailConfig{
-			exp:       time.Hour * 24 * 3, // 3 days to accept invitation
+			exp:       time.Minute * 10, // 10 min to accept invitation
 			fromEmail: env.GetString("FROM_EMAIL", ""),
 			sendgrid: sendGridConfig{
 				apiKey: env.GetString("SEND_GRID_API_KEY", ""),
@@ -69,6 +70,11 @@ func main() {
 			db:       env.GetInt("REDIS_DB", 0),
 			enabled:  env.GetBool("REDIS_ENABLED", false),
 		},
+		rateLimiter: ratelimiter.Config{
+			RequestPerTimeFrame: env.GetInt("RATE_LIMITER_REQUESTS_COUNT", 20),
+			TimeFrame:           time.Second * 5,
+			Enabled:             env.GetBool("RATE_LIMITER_ENABLED", true),
+		},
 	}
 
 	// Database
@@ -79,6 +85,9 @@ func main() {
 	}
 
 	defer db.Close()
+
+	// Rate Limiter
+	rateLimiter := ratelimiter.NewFixedWindowLimiter(cfg.rateLimiter.RequestPerTimeFrame, cfg.rateLimiter.TimeFrame)
 
 	// Cache
 	var cach *redis.Client
@@ -97,7 +106,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	app := newApplication(cfg, store, logger, mailer, cacheStore)
+	app := newApplication(cfg, store, logger, mailer, cacheStore, rateLimiter)
 
 	mux := app.mount()
 
