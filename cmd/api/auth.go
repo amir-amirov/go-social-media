@@ -133,6 +133,60 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 }
 
+func (app *application) resendTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Email string `json:"email" validate:"required,email,max=255"`
+	}
+
+	if err := readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	user, err := app.store.Users.GetByEmail(r.Context(), payload.Email)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	token, err := utils.Generate6DigitCode() // For user confirming their email using 6 digit number
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	err = app.store.Users.CreateUserInvitation(r.Context(), nil, token, user.ID, app.config.mail.exp)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	isProdEnv := app.config.env == "production"
+	vars := struct {
+		Username string
+		Code     string
+	}{
+		Username: user.Username,
+		Code:     token,
+	}
+
+	_, err = app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
+	if err != nil {
+		app.logger.Errorw("error sending welcome email", "error", err)
+
+		// rollback later user creation if email fails (SAGA pattern)
+
+		app.internalServerError(w, r, err)
+		return
+	}
+
+}
+
 func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	var payload LoginUserPayload
 

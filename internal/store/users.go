@@ -98,7 +98,7 @@ func (s *UserStore) CreateAndInvite(ctx context.Context, user *User, token strin
 		}
 
 		// create the user invite
-		if err := s.createUserInvitation(ctx, tx, token, user.ID, invitationExp); err != nil {
+		if err := s.CreateUserInvitation(ctx, tx, token, user.ID, invitationExp); err != nil {
 			return err
 		}
 
@@ -174,7 +174,7 @@ func (s *UserStore) GetByEmail(ctx context.Context, email string) (*User, error)
 
 // This is private method, so it cannot be used outside of the package
 // Also it is not listed in interface list of methods for UserStore
-func (s *UserStore) createUserInvitation(ctx context.Context, tx *sql.Tx, token string, userID int64, expiry time.Duration) error {
+func (s *UserStore) CreateUserInvitation(ctx context.Context, tx *sql.Tx, token string, userID int64, expiry time.Duration) error {
 
 	query := `
 		INSERT INTO user_invitations (token, user_id, expiry)
@@ -184,9 +184,16 @@ func (s *UserStore) createUserInvitation(ctx context.Context, tx *sql.Tx, token 
 	ctx, cancel := context.WithTimeout(ctx, queryDuration)
 	defer cancel()
 
-	_, err := tx.ExecContext(ctx, query, token, userID, time.Now().Add(expiry))
-	if err != nil {
-		return err
+	if tx != nil {
+		_, err := tx.ExecContext(ctx, query, token, userID, time.Now().Add(expiry))
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := s.db.ExecContext(ctx, query, token, userID, time.Now().Add(expiry))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

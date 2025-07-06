@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import CenteredCard from '../../components/CenteredCard'
 import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material'
 import { toast } from 'react-toastify'
-import { useVerifyEmail } from '../../hooks/auth'
+import { useResendCode, useVerifyEmail } from '../../hooks/auth'
 import ReactCodeInput from 'react-code-input'
 
 const VerifyEmail: React.FC = () => {
@@ -16,6 +16,7 @@ const VerifyEmail: React.FC = () => {
   const email = state?.email as string | undefined
 
   const verifyEmailMutation = useVerifyEmail()
+  const resendCode = useResendCode()
 
   useEffect(() => {
     if (!email) {
@@ -59,7 +60,7 @@ const VerifyEmail: React.FC = () => {
             type="tel"
             fields={6}
             onChange={(value) => setCode(value)}
-            disabled={verifyEmailMutation.isPending}
+            disabled={verifyEmailMutation.isPending || resendCode.isPending}
             inputStyle={{
               fontFamily: 'sans-serif',
               margin: '0 6px',
@@ -86,16 +87,24 @@ const VerifyEmail: React.FC = () => {
           fullWidth
           sx={{ mt: 2, py: 1.2, borderRadius: 2 }}
           type="submit"
-          disabled={verifyEmailMutation.isPending}
+          disabled={verifyEmailMutation.isPending || resendCode.isPending}
         >
-          {verifyEmailMutation.isPending ? (
+          {verifyEmailMutation.isPending || resendCode.isPending ? (
             <CircularProgress size={24} sx={{ color: 'white' }} />
           ) : (
             'Verify'
           )}
         </Button>
         <Typography align="center" mt={2}>
-          Didn't receive the code? <Link to="/signup">Resend</Link>
+          Didn't receive the code?{' '}
+          <Box
+            component="span"
+            sx={{ cursor: 'pointer' }}
+            color="primary.main"
+            onClick={() => resendCode.mutate(email)}
+          >
+            Resend
+          </Box>
         </Typography>
       </Box>
     </CenteredCard>

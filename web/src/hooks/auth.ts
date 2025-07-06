@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import auth from '../api/actions/auth'
 import { UserState } from '../store/user/types'
 import { useUser } from '../store/user'
+import { toast } from 'react-toastify'
 
 export const useLogin = () => {
   const { setUser, setToken } = useUser()
@@ -22,4 +23,10 @@ export const useSignIn = () =>
 export const useVerifyEmail = () =>
   useMutation({
     mutationFn: auth.verifyEmail,
+  })
+
+export const useResendCode = () =>
+  useMutation({
+    mutationFn: auth.resendCode,
+    onSuccess: () => toast.success('Code resent successfully'),
   })

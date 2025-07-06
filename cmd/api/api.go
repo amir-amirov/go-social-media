@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -73,10 +72,7 @@ type redisConfig struct {
 }
 
 func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, mailer mailer.Client, cacheStore cache.Storage, rateLimiter ratelimiter.Limiter) *application {
-	log.Println("cfg:", cfg)
-	// log.Println("store:", store)
-	// log.Println("logger: ", logger)
-	log.Println("mailer: ", mailer)
+
 	return &application{
 		config:      cfg,
 		store:       store,
@@ -88,11 +84,6 @@ func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, 
 }
 
 func (app *application) mount() http.Handler {
-	// mux := http.NewServeMux()
-
-	// mux.HandleFunc("GET /v1/health", app.healthCheckHandler)
-
-	// return mux
 
 	r := chi.NewRouter()
 
@@ -126,7 +117,6 @@ func (app *application) mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 
-		// r.With(app.BasicAuthMiddleware()).Get("/health", app.healthCheckHandler)
 		r.Get("/health", app.healthCheckHandler)
 
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docURL)))
@@ -154,7 +144,6 @@ func (app *application) mount() http.Handler {
 						r.Use(app.commentsContextMiddleware)
 
 						r.Get("/", app.getCommentsHandler)
-						// TODO checkCOMMENT ownership
 						r.Patch("/", app.checkPostOwnership("moderator", app.updateCommentHandler))
 						r.Delete("/", app.checkPostOwnership("admin", app.deleteCommentHandler))
 					})
@@ -186,7 +175,7 @@ func (app *application) mount() http.Handler {
 
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/user", app.registerUserHandler) // create user in "users" with is_active=false and token in "user_invitations"
-			// r.Post("/token", app.createTokenHandler) // update token of already created user with is_active=false
+			r.Post("/token", app.resendTokenHandler) // update token of already created user with is_active=false
 			r.Post("/login", app.loginUserHandler)
 		})
 
