@@ -14,6 +14,7 @@ import (
 	"github.com/amir-amirov/go-social-media/docs"
 	"github.com/amir-amirov/go-social-media/internal/env"
 	"github.com/amir-amirov/go-social-media/internal/mailer"
+	"github.com/amir-amirov/go-social-media/internal/ratelimiter"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/amir-amirov/go-social-media/internal/store/cache"
 	"github.com/go-chi/chi/v5"
@@ -25,20 +26,22 @@ import (
 )
 
 type application struct {
-	config     config
-	store      store.Storage
-	logger     *zap.SugaredLogger
-	mailer     mailer.Client
-	cacheStore cache.Storage
+	config      config
+	store       store.Storage
+	logger      *zap.SugaredLogger
+	mailer      mailer.Client
+	cacheStore  cache.Storage
+	rateLimiter ratelimiter.Limiter
 }
 
 type config struct {
-	addr   string
-	apiURL string
-	db     dbConfig
-	env    string
-	mail   mailConfig
-	redis  redisConfig
+	addr        string
+	apiURL      string
+	db          dbConfig
+	env         string
+	mail        mailConfig
+	redis       redisConfig
+	rateLimiter ratelimiter.Config
 }
 
 type dbConfig struct {
@@ -69,17 +72,18 @@ type redisConfig struct {
 	enabled  bool
 }
 
-func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, mailer mailer.Client, cacheStore cache.Storage) *application {
+func newApplication(cfg config, store store.Storage, logger *zap.SugaredLogger, mailer mailer.Client, cacheStore cache.Storage, rateLimiter ratelimiter.Limiter) *application {
 	log.Println("cfg:", cfg)
 	// log.Println("store:", store)
 	// log.Println("logger: ", logger)
 	log.Println("mailer: ", mailer)
 	return &application{
-		config:     cfg,
-		store:      store,
-		logger:     logger,
-		mailer:     mailer,
-		cacheStore: cacheStore,
+		config:      cfg,
+		store:       store,
+		logger:      logger,
+		mailer:      mailer,
+		cacheStore:  cacheStore,
+		rateLimiter: rateLimiter,
 	}
 }
 
@@ -104,6 +108,10 @@ func (app *application) mount() http.Handler {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
+
+	if app.config.rateLimiter.Enabled {
+		r.Use(app.RateLimiterMiddleware)
+	}
 
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
