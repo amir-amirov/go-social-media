@@ -27,8 +27,11 @@ jobs:
       - run: |
           git config user.email "action@github.com"
           git config user.name  "GitHub Action"
+
           BRANCH="chore/bump-version-${{ steps.get_version.outputs.VERSION }}"
-          git switch -c "$BRANCH"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
+          git checkout -B "$BRANCH"
           git add cmd/api/main.go
           git commit -m "chore: bump version to ${{ steps.get_version.outputs.VERSION }}" || exit 0
           git push --set-upstream origin "$BRANCH"
