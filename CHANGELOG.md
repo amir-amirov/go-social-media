@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/amir-amirov/go-social-media/compare/v1.0.0...v1.0.1) (2025-07-06)
+
+
+### Bug Fixes
+
+* removed push trigger in audit.yaml ([9ca36bc](https://github.com/amir-amirov/go-social-media/commit/9ca36bc4d77025897f80fa2f4165129bef6b4818))
+
 ## 1.0.0 (2025-07-06)
 
 
