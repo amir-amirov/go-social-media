@@ -1,32 +1,44 @@
 name: Update Version and Release
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update-version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Extract latest version from CHANGELOG.md
-        id: get_version
+      # 1. Grab latest version from CHANGELOG
+      - id: get_version
         run: |
           VERSION=$(grep -oP '\[\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | head -1)
-          echo "::set-output name=VERSION::$VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Update version in cmd/api/main.go
-        run: |
+      # 2. Update the code
+      - run: |
           sed -i "s/const version = \".*\"/const version = \"${{ steps.get_version.outputs.VERSION }}\"/" cmd/api/main.go
 
-      - name: Commit and push if changed
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
+      # 3. Commit on a new branch
+      - run: |
+          git config user.email "action@github.com"
+          git config user.name  "GitHub Action"
+          BRANCH="chore/bump-version-${{ steps.get_version.outputs.VERSION }}"
+          git switch -c "$BRANCH"
           git add cmd/api/main.go
-          git commit -m "Update version to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
-          git push
+          git commit -m "chore: bump version to ${{ steps.get_version.outputs.VERSION }}" || exit 0
+          git push --set-upstream origin "$BRANCH"
+
+      # 4. Open or update the PR
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ env.BRANCH }}
+          base: main
+          title: "chore: bump version to ${{ steps.get_version.outputs.VERSION }}"
+          body: "Automated version bump."
+          commit-message: "chore: bump version to ${{ steps.get_version.outputs.VERSION }}"
+          delete-branch: true
