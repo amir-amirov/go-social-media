@@ -88,19 +88,6 @@ func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// func (app *application) BasicAuthMiddleware() func(http.Handler) http.Handler {
-// 	return func(next http.Handler) http.Handler {
-// 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 			authHeader := r.Header.Get("Authorization")
-// 			if authHeader == "" {
-// 				app.unAuthorizedErrorResponse(w, r, errors.New("authorization header is missing"))
-// 				return
-// 			}
-
-// 		}
-// 	}
-// }
-
 func (app *application) getUser(ctx context.Context, userID int64) (*store.User, error) {
 
 	var err error
@@ -110,10 +97,6 @@ func (app *application) getUser(ctx context.Context, userID int64) (*store.User,
 	}
 
 	user, _ := app.cacheStore.Users.Get(ctx, userID)
-	// if err != nil {
-	// 	app.logger.Errorf("error getting user from cache", "error", err.Error())
-	// 	return nil, err
-	// }
 
 	if user == nil {
 
@@ -132,4 +115,17 @@ func (app *application) getUser(ctx context.Context, userID int64) (*store.User,
 
 	return user, nil
 
+}
+
+func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if app.config.rateLimiter.Enabled {
+			if allow, retryAfter := app.rateLimiter.Allow(r.RemoteAddr); !allow {
+				app.rateLimitExceededResponse(w, r, retryAfter.String())
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
