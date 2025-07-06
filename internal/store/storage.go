@@ -21,6 +21,7 @@ type Storage struct {
 		Update(context.Context, *Post) error
 		Delete(context.Context, int64) error
 		GetUserFeed(context.Context, int64, PaginatedFeedQuery) ([]PostWithMetaData, error)
+		GetUserPosts(context.Context, int64, PaginatedFeedQuery) ([]PostWithMetaData, error)
 	}
 	Users interface {
 		Create(context.Context, *sql.Tx, *User) error
@@ -29,6 +30,7 @@ type Storage struct {
 		GetByEmail(context.Context, string) (*User, error)
 		Activate(context.Context, string) error
 		Update(context.Context, *sql.Tx, *User) error
+		Top(context.Context, int64) ([]User, error)
 	}
 	Comments interface {
 		Create(context.Context, *Comment) error
@@ -38,8 +40,9 @@ type Storage struct {
 		Delete(context.Context, int64) error
 	}
 	Followers interface {
-		Follow(ctx context.Context, user int64, follower int64) error
-		UnFollow(ctx context.Context, user int64, follower int64) error
+		Follow(ctx context.Context, userID int64, followerID int64) error
+		UnFollow(ctx context.Context, userID int64, followerID int64) error
+		Stats(ctx context.Context, userID int64) (*FollowStats, error)
 	}
 	Roles interface {
 		GetByName(context.Context, string) (*Role, error)

@@ -21,8 +21,9 @@ type User struct {
 	Email     string    `json:"email,omitempty"`
 	Password  password  `json:"-"`
 	CreatedAt time.Time `json:"-"`
-	IsActive  bool      `json:"is_active"`
-	RoleID    int64     `json:"role_id"`
+	IsActive  bool      `json:"-"`
+	RoleID    int64     `json:"-"`
+	Avatar    string    `json:"avatar"`
 }
 
 type password struct {
@@ -60,7 +61,7 @@ func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
 			role_id
 		) 
 		VALUES($1, $2, $3, (SELECT id FROM roles WHERE name = 'user')) 
-		RETURNING id, created_at;
+		RETURNING id, created_at, avatar;
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, queryDuration)
@@ -69,9 +70,9 @@ func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
 	// Sometimes I need this method to be a part of transaction so tx is introduced as optional parameter
 	var err error
 	if tx == nil {
-		err = s.db.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email).Scan(&user.ID, &user.CreatedAt)
+		err = s.db.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email).Scan(&user.ID, &user.CreatedAt, &user.Avatar)
 	} else {
-		err = tx.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email).Scan(&user.ID, &user.CreatedAt)
+		err = tx.QueryRowContext(ctx, query, &user.Username, &user.Password.hash, &user.Email).Scan(&user.ID, &user.CreatedAt, &user.Avatar)
 	}
 
 	var pqErr *pq.Error
@@ -141,7 +142,7 @@ func (s *UserStore) GetByID(ctx context.Context, userID int64) (*User, error) {
 func (s *UserStore) GetByEmail(ctx context.Context, email string) (*User, error) {
 
 	query := `
-		SELECT id, username, email, password, created_at
+		SELECT id, username, email, password, created_at, avatar
 		FROM users
 		WHERE email = $1
 	`
@@ -158,6 +159,7 @@ func (s *UserStore) GetByEmail(ctx context.Context, email string) (*User, error)
 		&user.Email,
 		&user.Password.hash,
 		&user.CreatedAt,
+		&user.Avatar,
 	); err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -290,4 +292,42 @@ func (s *UserStore) deleteInvitation(ctx context.Context, tx *sql.Tx, userID int
 
 	_, err := tx.ExecContext(ctx, query, userID)
 	return err
+}
+
+func (s *UserStore) Top(ctx context.Context, userID int64) ([]User, error) {
+	query := `
+		SELECT u.id, u.username, u.email, u.avatar, COUNT(p.id) as number_of_posts
+		FROM users u
+		JOIN posts p ON u.id = p.user_id
+		WHERE p.user_id != $1 AND u.id NOT IN (
+			SELECT user_id
+			FROM followers
+			WHERE follower_id = $1
+		)
+		GROUP BY u.id, u.username, u.email, u.avatar
+		ORDER BY number_of_posts DESC
+		LIMIT 10
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
+
+	rows, err := s.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]User, 0, 10)
+	temp := 0
+
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Avatar, &temp); err != nil {
+			return nil, err
+		}
+
+		users = append(users, user)
+	}
+
+	return users, nil
 }

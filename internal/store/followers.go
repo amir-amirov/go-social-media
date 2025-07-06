@@ -15,6 +15,11 @@ type FollowersStore struct {
 	db *sql.DB
 }
 
+type FollowStats struct {
+	Followers int `json:"followers"`
+	Following int `json:"following"`
+}
+
 func (s *FollowersStore) Follow(ctx context.Context, user_id int64, follower_id int64) error {
 
 	query := `
@@ -42,4 +47,29 @@ func (s *FollowersStore) UnFollow(ctx context.Context, user_id int64, follower_i
 
 	_, err := s.db.ExecContext(ctx, query, user_id, follower_id)
 	return err
+}
+
+func (s *FollowersStore) Stats(ctx context.Context, user_id int64) (*FollowStats, error) {
+	query := `
+		SELECT COUNT(*) AS followers, 
+		( 
+			SELECT COUNT(*)
+			FROM followers
+			WHERE follower_id = $1
+		) AS followings
+		FROM followers
+		WHERE user_id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, queryDuration)
+	defer cancel()
+
+	var stats FollowStats
+
+	err := s.db.QueryRowContext(ctx, query, user_id).Scan(&stats.Followers, &stats.Following)
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
 }
