@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/amir-amirov/go-social-media/docs"
+	"github.com/amir-amirov/go-social-media/internal/env"
 	"github.com/amir-amirov/go-social-media/internal/mailer"
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/amir-amirov/go-social-media/internal/store/cache"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"go.uber.org/zap"
@@ -94,6 +96,14 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{env.GetString("CORS_ALLOWED_ORIGIN", "http://localhost:5173")},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
 
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
@@ -116,6 +126,10 @@ func (app *application) mount() http.Handler {
 		r.Route("/posts", func(r chi.Router) {
 			r.Use(app.AuthTokenMiddleware)
 			r.Post("/", app.createPostHandler)
+
+			r.Route("/users", func(r chi.Router) {
+				r.Get("/{userID}", app.getUserPostsHandler)
+			})
 
 			r.Route("/{postID}", func(r chi.Router) {
 				r.Use(app.postsContextMiddleware)
@@ -151,11 +165,13 @@ func (app *application) mount() http.Handler {
 				// Meaning they will not create a resource if sent several times
 				r.Put("/follow", app.followUserHandler)
 				r.Put("/unfollow", app.unfollowUserHandler)
+				r.Get("/follow-stats", app.getFollowStatsHandler)
 			})
 
 			r.Group(func(r chi.Router) {
 				r.Use(app.AuthTokenMiddleware)
 				r.Get("/feed", app.getUserFeedHandler)
+				r.Get("/top", app.getTopUsersHandler)
 			})
 
 		})

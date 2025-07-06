@@ -54,7 +54,7 @@ func main() {
 		},
 		env: env.GetString("ENV", "development"),
 		mail: mailConfig{
-			exp:       time.Hour * 24 * 3, // 3 days to accept invitation
+			exp:       time.Minute * 10, // 10 min to accept invitation
 			fromEmail: env.GetString("FROM_EMAIL", ""),
 			sendgrid: sendGridConfig{
 				apiKey: env.GetString("SEND_GRID_API_KEY", ""),

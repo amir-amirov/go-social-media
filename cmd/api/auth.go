@@ -8,7 +8,7 @@ import (
 	"github.com/amir-amirov/go-social-media/internal/store"
 	"github.com/amir-amirov/go-social-media/internal/utils"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
+	// "github.com/google/uuid"
 )
 
 type RegisterUserPayload struct {
@@ -65,7 +65,12 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// token is a code which will be sent to user via email
-	token := uuid.New().String()
+	// token := uuid.New().String() // For user confirming their email using links
+	token, err := utils.Generate6DigitCode() // For user confirming their email using 6 digit number
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
 
 	// store the user
 	if err := app.store.Users.CreateAndInvite(r.Context(), &user, token, app.config.mail.exp); err != nil {
@@ -83,15 +88,22 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	// mail
 	isProdEnv := app.config.env == "production"
 	// activationURL := fmt.Sprintf("%s/confirm/%s", app.config.frontendURL,token)
+	// vars := struct {
+	// 	Username      string
+	// 	ActivationURL string
+	// }{
+	// 	Username:      user.Username,
+	// 	ActivationURL: token,
+	// }
 	vars := struct {
-		Username      string
-		ActivationURL string
+		Username string
+		Code     string
 	}{
-		Username:      user.Username,
-		ActivationURL: token,
+		Username: user.Username,
+		Code:     token,
 	}
 
-	_, err := app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
+	_, err = app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
 	if err != nil {
 		app.logger.Errorw("error sending welcome email", "error", err)
 
