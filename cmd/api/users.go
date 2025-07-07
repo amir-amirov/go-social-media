@@ -76,6 +76,19 @@ func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
+// UnfollowUser gdoc
+//
+//	@Summary		Unfollow a user
+//	@Description	Unfollow a user by ID
+//	@Tags			Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			userID	path		int		true	"User ID"
+//	@Success		204		{string}	string	"User unfollowed"
+//	@Failure		400		{object}	error	"User payload missing"
+//	@Failure		404		{object}	error	"User not found"
+//	@Security		ApiKeyAuth
+//	@Router			/users/{userID}/unfollow [put]
 func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	follower := app.getUserFromCtx(r) // This is the user who is unfollowing (making the request)
