@@ -15,7 +15,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	addr := env.GetString("DB_ADDR", "")
+	addr := env.GetString("SEED_DB_ADDR", "")
 	conn, err := db.New(addr, 3, 3)
 	if err != nil {
 		log.Fatal(err)

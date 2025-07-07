@@ -18,6 +18,18 @@ type commentPayload struct {
 	Content string `json:"content" validate:"required,max=200"`
 }
 
+//	@Summary	Create a comment on a post
+//	@Tags		Comments
+//	@Accept		json
+//	@Produce	json
+//	@Param		postID	path		int				true	"Post ID"
+//	@Param		payload	body		commentPayload	true	"Comment content"
+//	@Success	201		{object}	store.Comment
+//	@Failure	400		{object}	error
+//	@Failure	401		{object}	error
+//	@Failure	500		{object}	error
+//	@Security	BearerAuth
+//	@Router		/posts/{postID}/comments [post]
 func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Request) {
 	var payload commentPayload
 	if err := readJSON(w, r, &payload); err != nil {
@@ -53,6 +65,14 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 
 }
 
+//	@Summary	Get a comment
+//	@Tags		Comments
+//	@Produce	json
+//	@Param		commentID	path		int	true	"Comment ID"
+//	@Success	200			{object}	store.Comment
+//	@Failure	404			{object}	error
+//	@Failure	500			{object}	error
+//	@Router		/comments/{commentID} [get]
 func (app *application) getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	comment := getCommentFromCtx(r)
 
@@ -71,6 +91,18 @@ func (app *application) getCommentsHandler(w http.ResponseWriter, r *http.Reques
 
 }
 
+//	@Summary	Update a comment
+//	@Tags		Comments
+//	@Accept		json
+//	@Produce	json
+//	@Param		commentID	path		int				true	"Comment ID"
+//	@Param		payload		body		commentPayload	true	"Updated content"
+//	@Success	200			{object}	store.Comment
+//	@Failure	400			{object}	error
+//	@Failure	404			{object}	error
+//	@Failure	500			{object}	error
+//	@Security	BearerAuth
+//	@Router		/comments/{commentID} [put]
 func (app *application) updateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	comment := getCommentFromCtx(r)
 
@@ -100,6 +132,14 @@ func (app *application) updateCommentHandler(w http.ResponseWriter, r *http.Requ
 
 }
 
+//	@Summary	Delete a comment
+//	@Tags		Comments
+//	@Param		commentID	path		int		true	"Comment ID"
+//	@Success	204			{string}	string	"No Content"
+//	@Failure	404			{object}	error
+//	@Failure	500			{object}	error
+//	@Security	BearerAuth
+//	@Router		/comments/{commentID} [delete]
 func (app *application) deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	comment := getCommentFromCtx(r)
 

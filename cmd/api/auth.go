@@ -38,7 +38,7 @@ type UserWithToken struct {
 //	@Success		201		{object}	store.User			"User registered"
 //	@Failure		400		{object}	error
 //	@Failure		500		{object}	error
-//	@Router			/authentication/user [post]
+//	@Router			/auth/user [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	var payload RegisterUserPayload
 	if err := readJSON(w, r, &payload); err != nil {
@@ -117,6 +117,18 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 
 }
 
+// ActivateUser godoc
+//
+//	@Summary		Activates/Register a user
+//	@Description	Activates/Register a user by invitation token
+//	@Tags			Users
+//	@Produce		json
+//	@Param			token	path		string	true	"Invitation token"
+//	@Success		204		{string}	string	"User activated"
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/activate/{token} [put]
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
 
@@ -133,6 +145,83 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 }
 
+// Resend code godoc
+//
+//	@Summary		Resend activation code
+//	@Description	Resend activation code
+//	@Tags			Users
+//	@Produce		json
+//	@Success		200	{string}	string	"Code resent"
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/auth/token [post]
+func (app *application) resendTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Email string `json:"email" validate:"required,email,max=255"`
+	}
+
+	if err := readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	user, err := app.store.Users.GetByEmail(r.Context(), payload.Email)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	token, err := utils.Generate6DigitCode() // For user confirming their email using 6 digit number
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	err = app.store.Users.CreateUserInvitation(r.Context(), nil, token, user.ID, app.config.mail.exp)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	isProdEnv := app.config.env == "production"
+	vars := struct {
+		Username string
+		Code     string
+	}{
+		Username: user.Username,
+		Code:     token,
+	}
+
+	_, err = app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
+	if err != nil {
+		app.logger.Errorw("error sending welcome email", "error", err)
+
+		// rollback later user creation if email fails (SAGA pattern)
+
+		app.internalServerError(w, r, err)
+		return
+	}
+
+}
+
+// loginUserHandler godoc
+//
+//	@Summary		Login a user
+//	@Description	Login a user
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		LoginUserPayload	true	"User credentials"
+//	@Success		200		{object}	store.User			"User logged in"
+//	@Failure		400		{object}	error
+//	@Failure		500		{object}	error
+//	@Router			/auth/user [post]
 func (app *application) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	var payload LoginUserPayload
 

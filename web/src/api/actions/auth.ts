@@ -62,10 +62,28 @@ const verifyEmail = async (code: string) => {
   return response.data
 }
 
+const resendCode = async (email: string | undefined) => {
+  if (!email) return
+  const { response, status } = await fetchData({
+    url: `/auth/token`,
+    method: 'POST',
+    body: {
+      email,
+    },
+  })
+
+  if (status !== 200) {
+    throw new Error('Email verification failed')
+  }
+
+  return response.data
+}
+
 const auth = {
   login,
   signin,
   verifyEmail,
+  resendCode,
 }
 
 export default auth
